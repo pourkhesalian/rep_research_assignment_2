@@ -13,37 +13,101 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Synopsis
 Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.  
 
-This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.  
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage. 
+
+This project, cathegorises all different types of extreme weather conditions (more than 800 different conditions in the original dataset) into main cathegories such as TORNADO, STORM, HAIL, EXTREME COLD etc.  
+
+Then the fatalities and injuries caused by each one of the extreme weather condition group is calculated and plotted.
+Next, the total damage cost caused by each one of the extreme condition group on both properties and crops is calculated and ploted.
+
 
 ## Loading and Processing the Raw Data
+
+### Loading
 The data for this assignment come in the form of a comma-separated-value file compressed via the bzip2 algorithm to reduce its size. The file can be downloaded from [here](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2) [47Mb].  
 
 ```{r loading}
-file.url <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
-if (!file.exists('stormdata.bz2')) {download.file(url=file.url, destfile = 'stormdata.bz2')}
-storm.data <- read.csv('stormdata.bz2')
-storm.data <- 
+    file.url <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
+#checking if the data exists on the machine
+    if (!file.exists('stormdata.bz2')) {download.file(url=file.url, destfile = 'stormdata.bz2')}
+#reading data
+    storm.data <- read.csv('stormdata.bz2')
+```
+### Subset 
+First, out of 37 columns in the dataset, only 7 is needed for the project; so below code subsets the dataset and keeps only those seven required variables.  
+```{r subset}
+#subsetting data
+    storm.data<- storm.data[c("EVTYPE","FATALITIES","INJURIES","PROPDMG", "PROPDMGEXP","CROPDMG","CROPDMGEXP")]
+```
+### Processing
+Having looked at the dataset, it seems that different names are used for the same extreme weather condinions which makes it very difficult to extract any useful data from it. Ther are `r length(unique(storm.data$EVTYPE))`  extreme condition types which is too many. The below code groups extreme weather conditions that are close to each other into main categories.  
+
+```{r categorize}
+    
+    storm.data$EVTYPE<- toupper(storm.data$EVTYPE)
+    storm.data$EVENT.TYPE<-
+      ifelse(grepl('TORN|GUST|FUNNEL|ROTA', storm.data$EVTYPE), 'TORNADO',
+      ifelse(grepl('WINT|ICE|COOL| LOW|COLD|FROST|AVAL|BLIZ|SNOW|FREEZ|FROZ|LOW TEMP|HYPOTH|ICY', storm.data$EVTYPE),'EXTREME WINTER',
+      ifelse(grepl('STOR|WIND|HURR|TYPH|TURB|WND', storm.data$EVTYPE), 'STORM',
+      ifelse(grepl('DOWNBURST|WATER|FLOO|WET|RAIN|PRECIP|COASTAL|DROWN|TSU|DAM|SHOW|SPOUT|FLD',storm.data$EVTYPE),'FLOOD',
+      ifelse(grepl('HAIL',storm.data$EVTYPE),'HAIL',
+      ifelse(grepl('HEAT|WARM|HIGH TEMP|HOT|HYPER|TROP',storm.data$EVTYPE),'EXCESS HEAT',
+      ifelse(grepl('FIRE|SMOK',storm.data$EVTYPE),'FIRE',
+      ifelse(grepl('DRY|DRI|DROUG', storm.data$EVTYPE),'DROUGHT',
+      ifelse(grepl('SEA|ROUGH|WAV|MARI|BEACH|RIP|TIDE|CURR|HIGH SEA|SURF|DROW',storm.data$EVTYPE),'SEA AND OCEAN',
+      ifelse(grepl('LIGH',storm.data$EVTYPE), 'LIGHTNING',
+      ifelse(grepl('VOLC',storm.data$EVTYPE), 'VOLCANO',
+      ifelse(grepl('DUS|FOG|VOG',storm.data$EVTYPE ),'FOG&DUST',
+      ifelse(grepl('SLI|SWE|LAND', storm.data$EVTYPE),'LAND SLIDE',
+      'OTHER'))))))))))))) 
+
+```
+The final `r length(unique(storm.data$EVENT.TYPE))` main groups are:  
+`r unique(storm.data$EVENT.TYPE)`  
+
+#### Fatalities
+The below code calculates total number of fatalities from 1950 to November 2011, in the US, based on the even type.
+```{r fatalities}
+fatalities <- aggregate(FATALITIES~ EVENT.TYPE, storm.data, sum)
 
 ```
 
+#### Injuries  
+The below code calculates total number of injuries from 1950 to November 2011, in the US, based on the even type..  
+```{r injuries}
+injuries <- aggregate(INJURIES~ EVENT.TYPE, storm.data, sum)
 
+```
+#### Economy effects
+The below code calculates the total damage cost caused by diffirent types of extreme weather from 1950 to November 2011, in the US.
 
-
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r economic}
+    #fixing the multiplier in PROPDMGEXP and CROPDMGEXP
+    unique(storm.data$PROPDMGEXP)
+    multip.lookup.table <- data.frame(
+      symb=unique(as.character(storm.data$PROPDMGEXP)),
+      expon=c(3,6,0,9,6,0,0,5,6,0,4,2,3,2,7,2,0,1,8))
+    multip.lookup.table
+    storm.data$PROPDMGVAL<-storm.data$PROPDMG*10^multip.lookup.table$expon[match(storm.data$PROPDMGEXP, multip.lookup.table$symb)]
+    storm.data$CROPDMGVAL<-storm.data$CROPDMG*10^multip.lookup.table$expon[match(storm.data$CROPDMGEXP, multip.lookup.table$symb)]
+    storm.data$TOTALDMGVAL <- storm.data$PROPDMGVAL+storm.data$CROPDMGVAL
+    tot.dmg<- aggregate(TOTALDMGVAL~ EVENT.TYPE, storm.data, sum)
 ```
 
-## Including Plots
+### Results and Plots
 
-You can also embed plots, for example:
+Fatality counts, injury counts and damages costs in milion USD based on the type of extreme weather condition can be seen in the below charts and plots.
+#### Fatality
+```{r chartsf}
+fatalities
 
-```{r pressure, echo=FALSE}
-plot(pressure)
 ```
+#### Injury
+```{r chartsi}
+injuries
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```
+#### Damage cost (in USD)
+```{r chartst}
+tot.dmg
+```
