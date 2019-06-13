@@ -83,11 +83,11 @@ The below code calculates the total damage cost caused by diffirent types of ext
 
 ```{r economic}
     #fixing the multiplier in PROPDMGEXP and CROPDMGEXP
-    unique(storm.data$PROPDMGEXP)
+    #unique(storm.data$PROPDMGEXP)
     multip.lookup.table <- data.frame(
       symb=unique(as.character(storm.data$PROPDMGEXP)),
       expon=c(3,6,0,9,6,0,0,5,6,0,4,2,3,2,7,2,0,1,8))
-    multip.lookup.table
+    #multip.lookup.table
     storm.data$PROPDMGVAL<-storm.data$PROPDMG*10^multip.lookup.table$expon[match(storm.data$PROPDMGEXP, multip.lookup.table$symb)]
     storm.data$CROPDMGVAL<-storm.data$CROPDMG*10^multip.lookup.table$expon[match(storm.data$CROPDMGEXP, multip.lookup.table$symb)]
     storm.data$TOTALDMGVAL <- storm.data$PROPDMGVAL+storm.data$CROPDMGVAL
@@ -101,13 +101,34 @@ Fatality counts, injury counts and damages costs in milion USD based on the type
 ```{r chartsf}
 fatalities
 
+    par(mar=c(8, 6, 3, 1))
+    barplot(height = fatalities$FATALITIES[order(fatalities$FATALITIES, decreasing = T)], 
+            names.arg = fatalities$EVENT.TYPE[order(fatalities$FATALITIES, decreasing = T)], 
+            las = 2,cex.names = .8,
+            ylab = 'Number of fatalities (Count)\n',
+            main = 'Fatalities of Extreme weather \n Conditions in the US from 1950 until 2011')
 ```
+
 #### Injury
 ```{r chartsi}
 injuries
-
+    injuries <- aggregate(INJURIES~ EVENT.TYPE, storm.data, sum)
+    par(mar=c(8, 6, 3, 1))
+    barplot(height = injuries$INJURIES[order(injuries$INJURIES, decreasing = T)], 
+            names.arg = injuries$EVENT.TYPE[order(injuries$INJURIES, decreasing = T)], 
+            las = 2,cex.names = .8,
+            ylab = 'Number of injuries (Count)\n',
+            main = 'Injuries of Extreme weather \n Conditions in the US from 1950 until 2011')
 ```
+
 #### Damage cost (in USD)
 ```{r chartst}
 tot.dmg
+    par(mar=c(8, 6, 3, 4))
+    barplot(height = tot.dmg$TOTALDMGVAL[order(tot.dmg$TOTALDMGVAL, decreasing = T)]/10^6, 
+            names.arg = tot.dmg$EVENT.TYPE[order(tot.dmg$TOTALDMGVAL, decreasing = T)], 
+            las = 2,cex.names = .8,
+            ylab = 'Damage cost (Milion Dollars)\n',
+            main = 'Economical damage caused by Extreme Weather \n Conditions in the US from 1950 until 2011')
+
 ```
